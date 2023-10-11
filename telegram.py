@@ -1,4 +1,3 @@
-import time
 from flask import Flask
 from flask import request
 from flask import Response
@@ -6,8 +5,8 @@ import requests
 import paho.mqtt.client as mqtt
 import threading
 
-TOKEN = "6512860501:AAGcGNO1lhrkw1rHMWbHIU6vbv5pJOFucNA"
-# https://api.telegram.org/bot6512860501:AAGcGNO1lhrkw1rHMWbHIU6vbv5pJOFucNA/setWebhook?url=https://6628-151-36-138-205.ngrok-free.app
+TOKEN = "6463703134:AAEpae9NaLJQQ7JB6s6029aBESS_q1mZ4b4"
+# https://api.telegram.org/bot6463703134:AAEpae9NaLJQQ7JB6s6029aBESS_q1mZ4b4/setWebhook?url=https://6d54-109-113-99-13.ngrok-free.app
 # ngrok http 5000
 
 # MQTT
@@ -53,33 +52,34 @@ def on_message(client, userdata, message):
 
     if mqtt.topic_matches_sub(topic_user, message.topic):
         # msg è il numero della colonna in cui deve scendere il dischetto dell'user
-        for row in grid[::-1]:
-            if row[int(msg)-1] == 0:
-                row[int(msg)-1] = 1
-                break
+        if msg != '-1':
+            for row in grid[::-1]:
+                if row[int(msg)-1] == 0:
+                    row[int(msg)-1] = 1
+                    break
 
-        grid_mes = ""
-        for row in grid:
-            for col in row:
-                if col == 0:
-                    grid_mes += "⭕\t "
-                elif col == 1:
-                    grid_mes += "🔴\t "
-                elif col == -1:
-                    grid_mes += "🔵\t "
-            grid_mes += "\n\n"
+            grid_mes = ""
+            for row in grid:
+                for col in row:
+                    if col == 0:
+                        grid_mes += "⭕\t "
+                    elif col == 1:
+                        grid_mes += "🔴\t "
+                    elif col == -1:
+                        grid_mes += "🔵\t "
+                grid_mes += "\n\n"
 
-        tel_del_message(message_id + counter + 1)
-        tel_del_message(message_id + counter)
-        counter += 2
-        tel_send_message(grid_mes)
-        tel_send_message(f"{username} ha scelto la colonna {int(msg)}")
+            tel_del_message(message_id + counter + 1)
+            tel_del_message(message_id + counter)
+            counter += 2
+            tel_send_message(grid_mes)
+            tel_send_message(f"{username} ha scelto la colonna {int(msg)}")
 
     if mqtt.topic_matches_sub(topic_robot, message.topic):
         # msg è il numero della colonna in cui deve scendere il dischetto dell'user
         for row in grid[::-1]:
-            if row[int(msg)-1] == 0:
-                row[int(msg)-1] = -1
+            if row[int(msg)] == 0:
+                row[int(msg)] = -1
                 break
 
         grid_mes = ""
@@ -97,8 +97,15 @@ def on_message(client, userdata, message):
         tel_del_message(message_id + counter)
         counter += 2
         tel_send_message(grid_mes)
-        tel_send_message(f"ConnectAI ha scelto la colonna {int(msg)}")
+        tel_send_message(f"ConnectAI ha scelto la colonna {int(msg) + 1}")
 
+    if mqtt.topic_matches_sub(topic_outcome, message.topic):
+        if msg == '-1':
+            tel_send_message(f"{username} vince!")
+        if msg == '1':
+            tel_send_message(f"ConnectAI vince!")
+        if msg == '0':
+            tel_send_message(f"Pareggio!")
 
 
 def tel_parse_message(message):
@@ -158,7 +165,7 @@ def tel_send_confirmbutton(msg):
 
     payload = {
         'chat_id': chat_id,
-        'text': f"{msg} è corretto?",
+        'text': f"\"{msg}\" è corretto?",
         'reply_markup': {
             "inline_keyboard": [[
                 {
@@ -250,7 +257,7 @@ def index():
                                  "⭕\t ⭕\t ⭕\t ⭕\t ⭕\n\n"
                                  "⭕\t ⭕\t ⭕\t ⭕\t ⭕\n\n")
 
-                tel_send_message(f"Inizia {username}")
+                tel_send_message(f"Iniziamo!")
 
                 state = 4
             if confirm == "no":
@@ -262,20 +269,9 @@ def index():
         return "<h1><h1>"
 
 
-def simulazione():
-    while 1:
-        time.sleep(0.5)
-        a = input(' Mossa user:')
-        # simulo l'invio della mossa dell'user da vision.py
-        mqtt_client.publish(f'connect4/user', a)
-        time.sleep(0.5)
-        b = input(' Mossa robot:')
-        # simulo l'invio della mossa del robot da connect4.py
-        mqtt_client.publish(f'connect4/robot', b)
-
-
 topic_user = 'connect4/user'
 topic_robot = 'connect4/robot'
+topic_username = 'connect4/username'
 topic_outcome = 'connect4/outcome'
 
 mqtt_client = mqtt.Client('Telegram')
@@ -289,8 +285,6 @@ t1 = threading.Thread()
 t1.start()
 t2 = threading.Thread(target=mqtt_client.loop_forever)
 t2.start()
-t3 = threading.Thread(target=simulazione)
-t3.start()
 
 if __name__ == '__main__':
     app.run(threaded=True)
