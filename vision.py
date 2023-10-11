@@ -124,7 +124,6 @@ def VisionTask():
                     consecutive_same_count = 0
                     target_value = totalFingers
 
-                # TODO: MANDARE A ROBOT VALORE OTTENUTO
                 print(totalFingers)
 
         cv2.imshow("Video", image)
