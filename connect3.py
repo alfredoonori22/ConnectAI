@@ -1,13 +1,11 @@
+import time
+
 import numpy as np
 import random
-import pygame
 import sys
 import math
-
-BLUE = (0, 0, 255)
-BLACK = (0, 0, 0)
-RED = (255, 0, 0)
-YELLOW = (255, 255, 0)
+import paho.mqtt.client as mqtt
+import threading
 
 ROW_COUNT = 4
 COLUMN_COUNT = 5
@@ -20,6 +18,28 @@ PLAYER_PIECE = 1
 AI_PIECE = -1
 
 WINDOW_LENGTH = 3
+NUMBER = -1
+
+# MQTT
+broker = 'broker.emqx.io'
+broker_port = 1883
+
+
+def on_connect(client, userdata, flags, rc):
+    # print("Connected with result code " + str(rc))
+    mqtt_client.subscribe(topic_user)
+    mqtt_client.subscribe(topic_robot)
+
+
+def on_message(client, userdata, message):
+    global NUMBER
+
+    msg = message.payload.decode()
+    print('Ho ricevuto il messaggio: ' + msg + ' dal topic ' + message.topic)
+
+    if mqtt.topic_matches_sub(topic_user, message.topic):
+        if msg != '-1':
+            NUMBER = int(msg) - 1
 
 
 def create_board():
@@ -110,7 +130,7 @@ def score_position(board, piece):
             window = col_array[r:r + WINDOW_LENGTH]
             score += evaluate_window(window, piece)
 
-    # Score posiive sloped diagonal
+    # Score positive sloped diagonal
     for r in range(ROW_COUNT - 2):
         for c in range(COLUMN_COUNT - 2):
             window = [board[r + i][c + i] for i in range(WINDOW_LENGTH)]
@@ -202,107 +222,83 @@ def pick_best_move(board, piece):
     return best_col
 
 
-def draw_board(board):
-    for c in range(COLUMN_COUNT):
-        for r in range(ROW_COUNT):
-            pygame.draw.rect(screen, BLUE, (c * SQUARESIZE, r * SQUARESIZE + SQUARESIZE, SQUARESIZE, SQUARESIZE))
-            pygame.draw.circle(screen, BLACK, (
-            int(c * SQUARESIZE + SQUARESIZE / 2), int(r * SQUARESIZE + SQUARESIZE + SQUARESIZE / 2)), RADIUS)
+def start_game():
+    global NUMBER
 
-    for c in range(COLUMN_COUNT):
-        for r in range(ROW_COUNT):
-            if board[r][c] == PLAYER_PIECE:
-                pygame.draw.circle(screen, RED, (
-                int(c * SQUARESIZE + SQUARESIZE / 2), height - int(r * SQUARESIZE + SQUARESIZE / 2)), RADIUS)
-            elif board[r][c] == AI_PIECE:
-                pygame.draw.circle(screen, YELLOW, (
-                int(c * SQUARESIZE + SQUARESIZE / 2), height - int(r * SQUARESIZE + SQUARESIZE / 2)), RADIUS)
-    pygame.display.update()
+    board = create_board()
+    print_board(board)
+    game_over = False
+    turn = random.randint(PLAYER, AI)
+
+    while not game_over:
+        # Ask for Person Player Input
+        time.sleep(2)
+
+        if turn == PLAYER:
+            print('Tuo turno')
+            mqtt_client.publish(f'connect4/user', -1)
+            while NUMBER == -1:
+                continue
+
+            col = NUMBER
+            NUMBER = -1
+
+            if is_valid_location(board, col):
+                row = get_next_open_row(board, col)
+                drop_piece(board, row, col, PLAYER_PIECE)
+
+                if winning_move(board, PLAYER_PIECE):
+                    print("Person Player wins!")
+                    mqtt_client.publish(topic_outcome, -1)
+                    game_over = True
+
+                turn += 1
+                turn = turn % 2
+
+                print_board(board)
+
+        # Ask for Player AI Input
+        if turn == AI and not game_over:
+            time.sleep(5)
+            col, minimax_score = minimax(board, 5, -math.inf, math.inf, True)
+
+            if is_valid_location(board, col):
+                row = get_next_open_row(board, col)
+                drop_piece(board, row, col, AI_PIECE)
+
+                mqtt_client.publish('connect4/robot', col)
+                if winning_move(board, AI_PIECE):
+                    print("Player AI wins!")
+                    mqtt_client.publish(topic_outcome, 1)
+                    game_over = True
+
+                print_board(board)
+
+                turn += 1
+                turn = turn % 2
+
+        if len(get_valid_locations(board)) == 0:
+            print("Draw!")
+            mqtt_client.publish(topic_outcome, 0)
+            game_over = True
 
 
-board = create_board()
-print_board(board)
-game_over = False
+if __name__ == '__main__':
+    topic_user = 'connect4/user'
+    topic_robot = 'connect4/robot'
+    topic_username = 'connect4/username'
+    topic_outcome = 'connect4/outcome'
 
-pygame.init()
+    mqtt_client = mqtt.Client('Connect3')
+    mqtt_client.on_connect = on_connect
+    mqtt_client.on_message = on_message
 
-SQUARESIZE = 100
+    # print("Connecting to " + broker + " port: " + str(broker_port))
+    mqtt_client.connect(broker, broker_port)
 
-width = COLUMN_COUNT * SQUARESIZE
-height = (ROW_COUNT + 1) * SQUARESIZE
+    t1 = threading.Thread()
+    t1.start()
+    t2 = threading.Thread(target=mqtt_client.loop_forever)
+    t2.start()
 
-size = (width, height)
-
-RADIUS = int(SQUARESIZE / 2 - 5)
-
-screen = pygame.display.set_mode(size)
-draw_board(board)
-pygame.display.update()
-
-myfont = pygame.font.SysFont("monospace", 75)
-
-turn = random.randint(PLAYER, AI)
-
-while not game_over:
-
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            sys.exit()
-
-        if event.type == pygame.MOUSEMOTION:
-            pygame.draw.rect(screen, BLACK, (0, 0, width, SQUARESIZE))
-            posx = event.pos[0]
-            if turn == PLAYER:
-                pygame.draw.circle(screen, RED, (posx, int(SQUARESIZE / 2)), RADIUS)
-
-        pygame.display.update()
-
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            pygame.draw.rect(screen, BLACK, (0, 0, width, SQUARESIZE))
-            # print(event.pos)
-            # Ask for Player 1 Input
-            if turn == PLAYER:
-                posx = event.pos[0]
-                col = int(math.floor(posx / SQUARESIZE))
-
-                if is_valid_location(board, col):
-                    row = get_next_open_row(board, col)
-                    drop_piece(board, row, col, PLAYER_PIECE)
-
-                    if winning_move(board, PLAYER_PIECE):
-                        label = myfont.render("Player 1 wins!!", 1, RED)
-                        screen.blit(label, (40, 10))
-                        game_over = True
-
-                    turn += 1
-                    turn = turn % 2
-
-                    print_board(board)
-                    draw_board(board)
-
-    # # Ask for Player 2 Input
-    if turn == AI and not game_over:
-
-        # col = random.randint(0, COLUMN_COUNT-1)
-        # col = pick_best_move(board, AI_PIECE)
-        col, minimax_score = minimax(board, 5, -math.inf, math.inf, True)
-
-        if is_valid_location(board, col):
-            # pygame.time.wait(500)
-            row = get_next_open_row(board, col)
-            drop_piece(board, row, col, AI_PIECE)
-
-            if winning_move(board, AI_PIECE):
-                label = myfont.render("Player 2 wins!!", 1, YELLOW)
-                screen.blit(label, (40, 10))
-                game_over = True
-
-            print_board(board)
-            draw_board(board)
-
-            turn += 1
-            turn = turn % 2
-
-    if game_over:
-        pygame.time.wait(3000)
-
+    start_game()

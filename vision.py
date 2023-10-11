@@ -1,7 +1,36 @@
+import time
+
 import cv2
 import mediapipe as mp
+import paho.mqtt.client as mqtt
+import threading
 
-class handTracker():
+NUMBER = -1
+TRACKER = False
+
+# MQTT
+broker = 'broker.emqx.io'
+broker_port = 1883
+
+def on_connect(client, userdata, flags, rc):
+    # print("Connected with result code " + str(rc))
+    mqtt_client.subscribe(topic_user)
+    mqtt_client.subscribe(topic_robot)
+
+
+def on_message(client, userdata, message):
+    global NUMBER, TRACKER
+
+    msg = message.payload.decode()
+    print('Ho ricevuto il messaggio: ' + msg + ' dal topic ' + message.topic)
+
+    if mqtt.topic_matches_sub(topic_user, message.topic):
+        if msg == '-1':
+            # Richiesta di numero
+            TRACKER = True
+
+
+class handTracker:
     def __init__(self, mode=False, maxHands=2, detectionCon=0.5,modelComplexity=1,trackCon=0.5):
         self.mode = mode
         self.maxHands = maxHands
@@ -46,44 +75,79 @@ class handTracker():
 
         return lmlist
 
+def VisionTask():
+    global NUMBER, TRACKER
 
-def main():
     cap = cv2.VideoCapture(0)
     tracker = handTracker()
     tipIds = [4, 8, 12, 16, 20]
+    consecutive_same_count = 0
+    target_value = None
 
     while True:
         success, image = cap.read()
-        image = tracker.handsFinder(image)
-        lmList = tracker.positionFinder(image)
-        if len(lmList) != 0:
-            fingers = []
+        if TRACKER:
+            image = tracker.handsFinder(image)
+            lmList = tracker.positionFinder(image)
+            if len(lmList) != 0:
+                fingers = []
 
-            if lmList[tipIds[0]][1] < 320:  # Thumb dx
-                if lmList[tipIds[0]][1] > lmList[tipIds[0] - 1][1]:
-                    fingers.append(1)
-                else:
-                    fingers.append(0)
-            else:   # Thumb sx
-                if lmList[tipIds[0]][1] < lmList[tipIds[0] - 1][1]:
-                    fingers.append(1)
-                else:
-                    fingers.append(0)
+                if lmList[tipIds[0]][1] < 320:  # Thumb dx
+                    if lmList[tipIds[0]][1] > lmList[tipIds[0] - 1][1]:
+                        fingers.append(1)
+                    else:
+                        fingers.append(0)
+                else:   # Thumb sx
+                    if lmList[tipIds[0]][1] < lmList[tipIds[0] - 1][1]:
+                        fingers.append(1)
+                    else:
+                        fingers.append(0)
 
-            # 4 Fingers
-            for id in range(1, 5):
-                if lmList[tipIds[id]][2] < lmList[tipIds[id]-2][2]:
-                    fingers.append(1)
-                else:
-                    fingers.append(0)
+                # 4 Fingers
+                for id in range(1, 5):
+                    if lmList[tipIds[id]][2] < lmList[tipIds[id]-2][2]:
+                        fingers.append(1)
+                    else:
+                        fingers.append(0)
 
-            totalFingers = fingers.count(1)
-            # TODO: MANDARE A ROBOT VALORE OTTENUTO
-            print(totalFingers)
+                totalFingers = fingers.count(1)
+
+                if totalFingers == target_value:
+                    consecutive_same_count += 1
+                    if consecutive_same_count >= 20:
+                        print(f"Stesso valore ({totalFingers}) per 20 volte.")
+                        NUMBER = totalFingers
+                        mqtt_client.publish(f'connect4/user', NUMBER)
+                        TRACKER = False
+                        NUMBER = -1
+                else:
+                    consecutive_same_count = 0
+                    target_value = totalFingers
+
+                # TODO: MANDARE A ROBOT VALORE OTTENUTO
+                print(totalFingers)
 
         cv2.imshow("Video", image)
-        cv2.waitKey(1)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            cap.release()
+            cv2.destroyAllWindows()
+            break
 
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    topic_user = 'connect4/user'
+    topic_robot = 'connect4/robot'
+
+    mqtt_client = mqtt.Client('Vision')
+    mqtt_client.on_connect = on_connect
+    mqtt_client.on_message = on_message
+
+    # print("Connecting to " + broker + " port: " + str(broker_port))
+    mqtt_client.connect(broker, broker_port)
+
+    t1 = threading.Thread()
+    t1.start()
+    t2 = threading.Thread(target=mqtt_client.loop_forever)
+    t2.start()
+
+    VisionTask()
