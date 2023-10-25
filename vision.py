@@ -7,10 +7,13 @@ import threading
 
 NUMBER = -1
 TRACKER = False
+topic_user = 'connect4/user'
+topic_robot = 'connect4/robot'
 
 # MQTT
 broker = 'broker.emqx.io'
 broker_port = 1883
+
 
 def on_connect(client, userdata, flags, rc):
     # print("Connected with result code " + str(rc))
@@ -53,6 +56,7 @@ class handTracker:
                     self.mpDraw.draw_landmarks(image, handLms, self.mpHands.HAND_CONNECTIONS)
         return image
 
+
     def handsFinder(self,image,draw=True):
         imageRGB = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
         self.results = self.hands.process(imageRGB)
@@ -74,6 +78,7 @@ class handTracker:
                 lmlist.append([id, cx, cy])
 
         return lmlist
+
 
 def VisionTask():
     global NUMBER, TRACKER
@@ -133,20 +138,14 @@ def VisionTask():
             break
 
 
+mqtt_client = mqtt.Client('Vision')
+mqtt_client.on_connect = on_connect
+mqtt_client.on_message = on_message
+
+# print("Connecting to " + broker + " port: " + str(broker_port))
+mqtt_client.connect(broker, broker_port)
+
 if __name__ == '__main__':
-    topic_user = 'connect4/user'
-    topic_robot = 'connect4/robot'
-
-    mqtt_client = mqtt.Client('Vision')
-    mqtt_client.on_connect = on_connect
-    mqtt_client.on_message = on_message
-
-    # print("Connecting to " + broker + " port: " + str(broker_port))
-    mqtt_client.connect(broker, broker_port)
-
-    t1 = threading.Thread()
-    t1.start()
     t2 = threading.Thread(target=mqtt_client.loop_forever)
     t2.start()
-
     VisionTask()

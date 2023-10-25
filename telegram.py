@@ -1,30 +1,50 @@
+import time
 from flask import Flask
 from flask import request
 from flask import Response
 import requests
 import paho.mqtt.client as mqtt
 import threading
+from coppeliasim.moveblock import moveBlockFunc
+import coppeliasim.globalvariables as g
+from connect3 import start_game
 
-TOKEN = "6463703134:AAEpae9NaLJQQ7JB6s6029aBESS_q1mZ4b4"
-# https://api.telegram.org/bot6463703134:AAEpae9NaLJQQ7JB6s6029aBESS_q1mZ4b4/setWebhook?url=https://6d54-109-113-99-13.ngrok-free.app
+TOKEN = "6463703134:AAFsoS-0TWPMOxq4ZEK8OG-p48D8cbaZa0w"
+# https://api.telegram.org/bot6463703134:AAFsoS-0TWPMOxq4ZEK8OG-p48D8cbaZa0w/setWebhook?url=https://2aee-2001-b07-6442-aa2f-adf2-4f76-10bf-8f07.ngrok.io
 # ngrok http 5000
 
 # MQTT
 broker = 'broker.emqx.io'
 broker_port = 1883
+topic_user = 'connect4/user'
+topic_robot = 'connect4/robot'
+topic_outcome = 'connect4/outcome'
+topic_turn = 'connect4/turn'
 
 app = Flask(__name__)
 
 global chat_id
 txt = ''
+username = ''
+
+turn = -1
 state = 0
-grid = [[0,0,0,0,0],
-        [0,0,0,0,0],
-        [0,0,0,0,0],
-        [0,0,0,0,0]]
-username = ""
 message_id = 0
 counter = 0
+
+grid = [[0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0]]
+diz = {0: 'A',
+       1: 'B',
+       2: 'C',
+       3: 'D'}
+diz_fingers={ 1: '1️⃣',
+              2: '2️⃣',
+              3: '3️⃣',
+              4: '4️⃣',
+              5: '5️⃣'}
 
 '''
 stato 0 = Start del bot
@@ -37,75 +57,73 @@ stato 6 = Rivincita/Esci
 '''
 
 
+def sendGrid():
+    global grid, counter
+
+    grid_mes = ''
+    for row in grid:
+        for col in row:
+            if col == 0:
+                grid_mes += "⚪\t "
+            elif col == 1:
+                grid_mes += "🔵\t "
+            elif col == -1:
+                grid_mes += "🟠\t "
+        grid_mes += "\n\n"
+
+    #tel_del_message(message_id + counter + 1)
+    #tel_del_message(message_id + counter)
+    counter += 2
+    tel_send_message(grid_mes)
+
+
 def on_connect(client, userdata, flags, rc):
-    print("Connected with result code " + str(rc))
     mqtt_client.subscribe(topic_user)
     mqtt_client.subscribe(topic_robot)
     mqtt_client.subscribe(topic_outcome)
+    mqtt_client.subscribe(topic_turn)
 
 
 def on_message(client, userdata, message):
-    global grid, counter, username
+    global grid, counter, username, turn
 
     msg = message.payload.decode()
     print('Ho ricevuto il messaggio: ' + msg + ' dal topic ' + message.topic)
 
-    if mqtt.topic_matches_sub(topic_user, message.topic):
-        # msg è il numero della colonna in cui deve scendere il dischetto dell'user
-        if msg != '-1':
-            for row in grid[::-1]:
-                if row[int(msg)-1] == 0:
-                    row[int(msg)-1] = 1
-                    break
+    if mqtt.topic_matches_sub(topic_user, message.topic) and msg != '-1':
+        c_row = 0
+        c_col = int(msg) - 1
 
-            grid_mes = ""
-            for row in grid:
-                for col in row:
-                    if col == 0:
-                        grid_mes += "⭕\t "
-                    elif col == 1:
-                        grid_mes += "🔴\t "
-                    elif col == -1:
-                        grid_mes += "🔵\t "
-                grid_mes += "\n\n"
-
-            tel_del_message(message_id + counter + 1)
-            tel_del_message(message_id + counter)
-            counter += 2
-            tel_send_message(grid_mes)
-            tel_send_message(f"{username} ha scelto la colonna {int(msg)}")
-
-    if mqtt.topic_matches_sub(topic_robot, message.topic):
         # msg è il numero della colonna in cui deve scendere il dischetto dell'user
         for row in grid[::-1]:
-            if row[int(msg)] == 0:
-                row[int(msg)] = -1
+            if row[int(msg)-1] == 0:
+                row[int(msg)-1] = 1
                 break
 
-        grid_mes = ""
-        for row in grid:
-            for col in row:
-                if col == 0:
-                    grid_mes += "⭕\t "
-                elif col == 1:
-                    grid_mes += "🔴\t "
-                elif col == -1:
-                    grid_mes += "🔵\t "
-            grid_mes += "\n\n"
+            c_row = c_row + 1
 
-        tel_del_message(message_id + counter + 1)
-        tel_del_message(message_id + counter)
-        counter += 2
-        tel_send_message(grid_mes)
-        tel_send_message(f"ConnectAI ha scelto la colonna {int(msg) + 1}")
+        moveBlockFunc(g.clientID, f'{diz[c_row]}{c_col}', g.position[c_row][c_col], 'blue')
+        sendGrid()
+        tel_send_message(f"{username} selected column {diz_fingers[int(msg)]}")
 
-    if mqtt.topic_matches_sub(topic_outcome, message.topic):
-        if msg == '-1':
-            tel_send_message(f"{username} vince!")
-        if msg == '1':
-            tel_send_message(f"ConnectAI vince!")
-        if msg == '0':
-            tel_send_message(f"Pareggio!")
+    if mqtt.topic_matches_sub(topic_robot, message.topic):
+        c_row = 0
+        c_col = int(msg) - 1
+
+        # msg è il numero della colonna in cui deve scendere il dischetto dell'user
+        for row in grid[::-1]:
+            if row[int(msg)-1] == 0:
+                row[int(msg)-1] = -1
+                break
+
+            c_row = c_row + 1
+
+        moveBlockFunc(g.clientID, f'{diz[c_row]}{c_col}', g.position[c_row][c_col], 'orange')
+        sendGrid()
+        tel_send_message(f"ConnectAI selected column {diz_fingers[int(msg)]}")
+
+    if mqtt.topic_matches_sub(topic_turn, message.topic):
+        turn = int(msg)
 
 
 def tel_parse_message(message):
@@ -139,11 +157,11 @@ def tel_send_startbutton():
 
     payload = {
         'chat_id': chat_id,
-        'text': f"Vuoi giocare contro ConnectAI?",
+        'text': f"Do you want to play against ConnectAI? 🤖",
         'reply_markup': {
             "inline_keyboard": [[
                 {
-                    "text": "Si",
+                    "text": "Yes",
                     "callback_data": 'yes'
                 },
                 {
@@ -158,6 +176,7 @@ def tel_send_startbutton():
 
     return r
 
+
 def tel_send_confirmbutton(msg):
     global chat_id
 
@@ -165,11 +184,11 @@ def tel_send_confirmbutton(msg):
 
     payload = {
         'chat_id': chat_id,
-        'text': f"\"{msg}\" è corretto?",
+        'text': f"Is '{msg}' correct?",
         'reply_markup': {
             "inline_keyboard": [[
                 {
-                    "text": "Si",
+                    "text": "Yes",
                     "callback_data": 'yes'
                 },
                 {
@@ -220,10 +239,12 @@ def index():
 
         if state == 0:
             chat_id, txt = tel_parse_message(msg)
-            tel_send_message("Benvenuto! Le regole sono pazze ciao."
-                             "\nQuando è il tuo turno seleziona con le dita la colonna in cui vuoi mettere le palle (la pedina scusa)"
-                             "\nBuona fortuna looser!")
-
+            tel_send_message("Welcome to Connect 3 Bot! 🟠🔵")
+            tel_send_message("Align three of your pieces either horizontally, vertically, or diagonally."
+                             "\nBe strategic and watch out for your opponent! 😉")
+            tel_send_message("To make your move, indicate the column number by showing your fingers in front of the webcam when it's your turn."
+                             "\nThe robot will move the piece for you! 🦾"
+                             "\nGood luck! 🍀")
             tel_send_startbutton()
             state = 1
 
@@ -231,11 +252,11 @@ def index():
             start = tel_parse_button(msg)
 
             if start == "yes":
-                tel_send_message("Inserisci l'username che vuoi usare nella sfida:")
+                tel_send_message("Please enter your username:")
                 state = 2
 
             if start == "no":
-                tel_send_message("Okay, alla prossima :(")
+                tel_send_message("Ok, see you! 👋🏻")
                 state = 0
 
         elif state == 2:
@@ -249,19 +270,27 @@ def index():
             confirm = tel_parse_button(msg)
 
             if confirm == "yes":
-                tel_send_message("Perfetto, iniziamo!")
-                tel_send_message("La situazione della griglia è la seguente:")
+                tel_send_message("Let's start! 🤓"
+                                 f"\n🟠: ConnectAI    🔵: {username}")
+                tel_send_message("Here's the current grid status:")
+                tel_send_message("⚪\t ⚪\t ⚪\t ⚪\t ⚪\n\n"
+                                 "⚪\t ⚪\t ⚪\t ⚪\t ⚪\n\n"
+                                 "⚪\t ⚪\t ⚪\t ⚪\t ⚪\n\n"
+                                 "⚪\t ⚪\t ⚪\t ⚪\t ⚪\n\n")
 
-                tel_send_message("⭕\t ⭕\t ⭕\t ⭕\t ⭕\n\n"
-                                 "⭕\t ⭕\t ⭕\t ⭕\t ⭕\n\n"
-                                 "⭕\t ⭕\t ⭕\t ⭕\t ⭕\n\n"
-                                 "⭕\t ⭕\t ⭕\t ⭕\t ⭕\n\n")
+                t_connect3 = threading.Thread(target=start_game)
+                t_connect3.start()
+                time.sleep(1)
 
-                tel_send_message(f"Iniziamo!")
+                if turn == 0:
+                    tel_send_message('It\'s your turn, use your fingers to choose the column 🖐🏻')
+                elif turn == 1:
+                    tel_send_message('It\'s ConnectAI turn ⚙️')
 
                 state = 4
+
             if confirm == "no":
-                tel_send_message("Reinseriscilo scemo:")
+                tel_send_message("Insert your username again:")
                 state = 2
 
         return Response('ok', status=200)
@@ -269,22 +298,14 @@ def index():
         return "<h1><h1>"
 
 
-topic_user = 'connect4/user'
-topic_robot = 'connect4/robot'
-topic_username = 'connect4/username'
-topic_outcome = 'connect4/outcome'
+def startTelegram():
+    app.run(threaded=True)
+
 
 mqtt_client = mqtt.Client('Telegram')
 mqtt_client.on_connect = on_connect
 mqtt_client.on_message = on_message
-
-print("Connecting to " + broker + " port: " + str(broker_port))
 mqtt_client.connect(broker, broker_port)
 
-t1 = threading.Thread()
-t1.start()
 t2 = threading.Thread(target=mqtt_client.loop_forever)
 t2.start()
-
-if __name__ == '__main__':
-    app.run(threaded=True)

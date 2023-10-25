@@ -24,6 +24,12 @@ NUMBER = -1
 broker = 'broker.emqx.io'
 broker_port = 1883
 
+topic_user = 'connect4/user'
+topic_robot = 'connect4/robot'
+topic_username = 'connect4/username'
+topic_outcome = 'connect4/outcome'
+topic_turn = 'connect4/turn'
+
 
 def on_connect(client, userdata, flags, rc):
     # print("Connected with result code " + str(rc))
@@ -226,9 +232,10 @@ def start_game():
     global NUMBER
 
     board = create_board()
-    print_board(board)
     game_over = False
     turn = random.randint(PLAYER, AI)
+
+    mqtt_client.publish(topic_turn, turn)
 
     while not game_over:
         # Ask for Person Player Input
@@ -266,7 +273,7 @@ def start_game():
                 row = get_next_open_row(board, col)
                 drop_piece(board, row, col, AI_PIECE)
 
-                mqtt_client.publish('connect4/robot', col)
+                mqtt_client.publish('connect4/robot', col+1)
                 if winning_move(board, AI_PIECE):
                     print("Player AI wins!")
                     mqtt_client.publish(topic_outcome, 1)
@@ -283,22 +290,12 @@ def start_game():
             game_over = True
 
 
-if __name__ == '__main__':
-    topic_user = 'connect4/user'
-    topic_robot = 'connect4/robot'
-    topic_username = 'connect4/username'
-    topic_outcome = 'connect4/outcome'
+mqtt_client = mqtt.Client('Connect3')
+mqtt_client.on_connect = on_connect
+mqtt_client.on_message = on_message
 
-    mqtt_client = mqtt.Client('Connect3')
-    mqtt_client.on_connect = on_connect
-    mqtt_client.on_message = on_message
+# print("Connecting to " + broker + " port: " + str(broker_port))
+mqtt_client.connect(broker, broker_port)
 
-    # print("Connecting to " + broker + " port: " + str(broker_port))
-    mqtt_client.connect(broker, broker_port)
-
-    t1 = threading.Thread()
-    t1.start()
-    t2 = threading.Thread(target=mqtt_client.loop_forever)
-    t2.start()
-
-    start_game()
+t2 = threading.Thread(target=mqtt_client.loop_forever)
+t2.start()
