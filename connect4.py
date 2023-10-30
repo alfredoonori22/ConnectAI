@@ -30,14 +30,14 @@ topic_turn = 'connect4/turn'
 topic_end = 'connect4/end'
 
 
-def on_connect(client, userdata, flags, rc):
+def on_connect():
     # print("Connected with result code " + str(rc))
     mqtt_client.subscribe(topic_user)
     mqtt_client.subscribe(topic_robot)
     mqtt_client.subscribe(topic_end)
 
 
-def on_message(client, userdata, message):
+def on_message(message):
     global NUMBER, END
 
     msg = message.payload.decode()
@@ -86,7 +86,7 @@ def winning_move(board, piece):
             if board[r][c] == piece and board[r-1][c+1] == piece and board[r-2][c+2] == piece and board[r-3][c+3] == piece:
                 return True
 
-    for c in range(3,COLS):
+    for c in range(3, COLS):
         for r in range(3, ROWS):
             if board[r][c] == piece and board[r-1][c-1] == piece and board[r-2][c-2] == piece and board[r-3][c-3] == piece:
                 return True

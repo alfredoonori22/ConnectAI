@@ -104,14 +104,14 @@ def sendGrid(turn):
     tel_send_message(grid_mes)
 
 
-def on_connect(client, userdata, flags, rc):
+def on_connect():
     mqtt_client.subscribe(topic_user)
     mqtt_client.subscribe(topic_robot)
     mqtt_client.subscribe(topic_outcome)
     mqtt_client.subscribe(topic_turn)
 
 
-def on_message(client, userdata, message):
+def on_message(message):
     global grid, counter, username, turn, state
 
     msg = message.payload.decode()

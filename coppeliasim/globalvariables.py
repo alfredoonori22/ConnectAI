@@ -18,17 +18,17 @@ PI = np.pi
 velocity = 1.3
 
 # Obtaining appropriate handles
-errorCode, target = sim.simxGetObjectHandle(clientID, '/target', sim.simx_opmode_blocking) # target dummy
-errorCode, j1 = sim.simxGetObjectHandle(clientID, '/UR10/ROBOTIQ85/active1', sim.simx_opmode_blocking) #gripper joint 1
-errorCode, j2 = sim.simxGetObjectHandle(clientID, '/UR10/ROBOTIQ85/active2', sim.simx_opmode_blocking) #gripper joint 2
-errorCode, connector = sim.simxGetObjectHandle(clientID, '/UR10/ROBOTIQ85/attachPoint', sim.simx_opmode_blocking) # gripper connect point
+_, target = sim.simxGetObjectHandle(clientID, '/target', sim.simx_opmode_blocking)   # target dummy
+_, j1 = sim.simxGetObjectHandle(clientID, '/UR10/ROBOTIQ85/active1', sim.simx_opmode_blocking)  # gripper joint 1
+_, j2 = sim.simxGetObjectHandle(clientID, '/UR10/ROBOTIQ85/active2', sim.simx_opmode_blocking)  # gripper joint 2
+_, connector = sim.simxGetObjectHandle(clientID, '/UR10/ROBOTIQ85/attachPoint', sim.simx_opmode_blocking)    # gripper connect point
 
 # Obtaining joint positions for the gripper to close & open
-errorCode, p1 = sim.simxGetJointPosition(clientID, j1, sim.simx_opmode_streaming)
-errorCode, p2 = sim.simxGetJointPosition(clientID, j2, sim.simx_opmode_streaming)
+_, p1 = sim.simxGetJointPosition(clientID, j1, sim.simx_opmode_streaming)
+_, p2 = sim.simxGetJointPosition(clientID, j2, sim.simx_opmode_streaming)
 
-returnCode, pos = sim.simxGetObjectPosition(clientID, target, -1, sim.simx_opmode_streaming)
-returnCode, orient = sim.simxGetObjectOrientation(clientID, target, -1, sim.simx_opmode_streaming)
+_, pos = sim.simxGetObjectPosition(clientID, target, -1, sim.simx_opmode_streaming)
+_, orient = sim.simxGetObjectOrientation(clientID, target, -1, sim.simx_opmode_streaming)
 
 # Coordinates
 initial_pos = [0, 0.1, 1.1, 0, -PI / 2, 0]
