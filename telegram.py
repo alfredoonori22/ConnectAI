@@ -7,10 +7,11 @@ import paho.mqtt.client as mqtt
 import threading
 from coppeliasim.moveblock import moveBlockFunc
 import coppeliasim.globalvariables as g
-from connect3 import start_game
+from connect4 import start_game
+from vision import VisionTask
 
 TOKEN = "6463703134:AAFsoS-0TWPMOxq4ZEK8OG-p48D8cbaZa0w"
-# https://api.telegram.org/bot6463703134:AAFsoS-0TWPMOxq4ZEK8OG-p48D8cbaZa0w/setWebhook?url=https://2aee-2001-b07-6442-aa2f-adf2-4f76-10bf-8f07.ngrok.io
+# https://api.telegram.org/bot6463703134:AAFsoS-0TWPMOxq4ZEK8OG-p48D8cbaZa0w/setWebhook?url=https://21a6-2001-b07-6442-aa2f-1800-82e6-397c-61d6.ngrok.io
 # ngrok http 5000
 
 # MQTT
@@ -31,20 +32,29 @@ turn = -1
 state = 0
 message_id = 0
 counter = 0
+camera_mode = True   # True camera, False keyboard
+NUMBER = -1
+ERROR = False
 
-grid = [[0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0]]
+grid = [[0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0]]
 diz = {0: 'A',
        1: 'B',
        2: 'C',
-       3: 'D'}
-diz_fingers={ 1: '1️⃣',
-              2: '2️⃣',
-              3: '3️⃣',
-              4: '4️⃣',
-              5: '5️⃣'}
+       3: 'D',
+       4: 'E',
+       5: 'F'}
+diz_numbers = {1: '1️⃣',
+               2: '2️⃣',
+               3: '3️⃣',
+               4: '4️⃣',
+               5: '5️⃣',
+               6: '6️⃣',
+               7: '7️⃣'}
 
 '''
 stato 0 = Start del bot
@@ -57,8 +67,8 @@ stato 6 = Rivincita/Esci
 '''
 
 
-def sendGrid():
-    global grid, counter
+def sendGrid(turn):
+    global grid, counter, camera_mode, ERROR
 
     grid_mes = ''
     for row in grid:
@@ -71,9 +81,26 @@ def sendGrid():
                 grid_mes += "🟠\t "
         grid_mes += "\n\n"
 
-    #tel_del_message(message_id + counter + 1)
-    #tel_del_message(message_id + counter)
-    counter += 2
+    grid_mes += "1️⃣\t 2️⃣\t 3️⃣\t 4️⃣\t 5️⃣\t 6️⃣\t 7️⃣\n\n"
+
+    if ERROR:
+        tel_del_message(message_id + counter + 5)
+        tel_del_message(message_id + counter + 4)
+
+    if not camera_mode and turn:
+        tel_del_message(message_id + counter + 3)
+
+    tel_del_message(message_id + counter + 2)
+    tel_del_message(message_id + counter + 1)
+    tel_del_message(message_id + counter)
+
+    if ERROR:
+        counter += 2
+        ERROR = False
+
+    if not camera_mode and turn:
+        counter += 1
+    counter += 3
     tel_send_message(grid_mes)
 
 
@@ -85,10 +112,10 @@ def on_connect(client, userdata, flags, rc):
 
 
 def on_message(client, userdata, message):
-    global grid, counter, username, turn
+    global grid, counter, username, turn, state
 
     msg = message.payload.decode()
-    print('Ho ricevuto il messaggio: ' + msg + ' dal topic ' + message.topic)
+    print('Telegram ha ricevuto il messaggio: ' + msg + ' dal topic ' + message.topic)
 
     if mqtt.topic_matches_sub(topic_user, message.topic) and msg != '-1':
         c_row = 0
@@ -102,9 +129,9 @@ def on_message(client, userdata, message):
 
             c_row = c_row + 1
 
+        sendGrid(True)
+        tel_send_message(f"{username} selected column {diz_numbers[int(msg)]}")
         moveBlockFunc(g.clientID, f'{diz[c_row]}{c_col}', g.position[c_row][c_col], 'blue')
-        sendGrid()
-        tel_send_message(f"{username} selected column {diz_fingers[int(msg)]}")
 
     if mqtt.topic_matches_sub(topic_robot, message.topic):
         c_row = 0
@@ -118,12 +145,33 @@ def on_message(client, userdata, message):
 
             c_row = c_row + 1
 
+        sendGrid(False)
+        tel_send_message(f"ConnectAI selected column {diz_numbers[int(msg)]}")
         moveBlockFunc(g.clientID, f'{diz[c_row]}{c_col}', g.position[c_row][c_col], 'orange')
-        sendGrid()
-        tel_send_message(f"ConnectAI selected column {diz_fingers[int(msg)]}")
 
     if mqtt.topic_matches_sub(topic_turn, message.topic):
         turn = int(msg)
+
+        if turn == 0:
+            if camera_mode:
+                tel_send_message('It\'s your turn, use your fingers to choose the column 🖐🏻')
+            else:
+                tel_send_message('It\'s your turn, send a number to choose the column ✍🏻')
+        elif turn == 1:
+            tel_send_message('It\'s ConnectAI turn ⚙️')
+            time.sleep(3)
+
+    if mqtt.topic_matches_sub(topic_outcome, message.topic):
+        result = int(msg)
+
+        if result == -1:
+            tel_send_message(f"{username} won the game! Congratulation! 🎉")
+        elif result == 1:
+            tel_send_message(f"ConnectAI won the game! 🦾")
+        elif result == 0:
+            tel_send_message("It's a draw! 🤝🫱🏻🫱🏻‍")
+        tel_send_message("See you next time! 👋🏻")
+        state = 6
 
 
 def tel_parse_message(message):
@@ -161,11 +209,15 @@ def tel_send_startbutton():
         'reply_markup': {
             "inline_keyboard": [[
                 {
-                    "text": "Yes",
-                    "callback_data": 'yes'
-                },
-                {
-                    "text": "No",
+                    "text": "Yes, with keyboard ⌨️",
+                    "callback_data": 'yes_k'
+                }],
+                [{
+                    "text": "Yes, with camera 📷",
+                    "callback_data": 'yes_c'
+                }],
+                [{
+                    "text": "No ✖️",
                     "callback_data": "no"
                 }]
             ]
@@ -230,19 +282,32 @@ def tel_del_message(del_id):
     return r
 
 
+def is_number(txt):
+    try:
+        value = int(txt)
+        if 1 <= value <= 7:
+            return True
+        else:
+            return False
+    except ValueError:
+        return False
+
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    global state, chat_id, message_id, txt, username
+    global state, chat_id, message_id, txt, username, camera_mode, counter, ERROR
 
     if request.method == 'POST':
         msg = request.get_json()
 
         if state == 0:
             chat_id, txt = tel_parse_message(msg)
-            tel_send_message("Welcome to Connect 3 Bot! 🟠🔵")
-            tel_send_message("Align three of your pieces either horizontally, vertically, or diagonally."
+            tel_send_message("Welcome to ConnectAI Bot! 🟠🔵")
+            tel_send_message("Align four of your pieces either horizontally, vertically, or diagonally."
                              "\nBe strategic and watch out for your opponent! 😉")
-            tel_send_message("To make your move, indicate the column number by showing your fingers in front of the webcam when it's your turn."
+            tel_send_message("There are two different modes to make your move in this game:"
+                             "\n 📷 -> Show the column number by holding up your fingers in front of the webcam"
+                             "\n ⌨️ -> Send a message with the column number"
                              "\nThe robot will move the piece for you! 🦾"
                              "\nGood luck! 🍀")
             tel_send_startbutton()
@@ -251,8 +316,16 @@ def index():
         elif state == 1:
             start = tel_parse_button(msg)
 
-            if start == "yes":
-                tel_send_message("Please enter your username:")
+            if start == "yes_c":
+                tel_send_message("Ok, you will select your moves using the camera ✌️🏻.\nPlease enter your username:")
+                # t_camera = threading.Thread(target=VisionTask)
+                # t_camera.start()
+                camera_mode = True
+                state = 2
+
+            if start == "yes_k":
+                tel_send_message("Ok, you will select your moves using the keyboard ⌨️.\nPlease enter your username:")
+                camera_mode = False
                 state = 2
 
             if start == "no":
@@ -273,25 +346,37 @@ def index():
                 tel_send_message("Let's start! 🤓"
                                  f"\n🟠: ConnectAI    🔵: {username}")
                 tel_send_message("Here's the current grid status:")
-                tel_send_message("⚪\t ⚪\t ⚪\t ⚪\t ⚪\n\n"
-                                 "⚪\t ⚪\t ⚪\t ⚪\t ⚪\n\n"
-                                 "⚪\t ⚪\t ⚪\t ⚪\t ⚪\n\n"
-                                 "⚪\t ⚪\t ⚪\t ⚪\t ⚪\n\n")
+                tel_send_message("⚪\t ⚪\t ⚪\t ⚪\t ⚪\t ⚪\t ⚪\t\n\n"
+                                 "⚪\t ⚪\t ⚪\t ⚪\t ⚪\t ⚪\t ⚪\t\n\n"
+                                 "⚪\t ⚪\t ⚪\t ⚪\t ⚪\t ⚪\t ⚪\t\n\n"
+                                 "⚪\t ⚪\t ⚪\t ⚪\t ⚪\t ⚪\t ⚪\t\n\n"
+                                 "⚪\t ⚪\t ⚪\t ⚪\t ⚪\t ⚪\t ⚪\t\n\n"
+                                 "⚪\t ⚪\t ⚪\t ⚪\t ⚪\t ⚪\t ⚪\t\n\n"
+                                 "1️⃣\t 2️⃣\t 3️⃣\t 4️⃣\t 5️⃣\t 6️⃣\t 7️⃣\t\n\n")
 
-                t_connect3 = threading.Thread(target=start_game)
+                t_connect3 = threading.Thread(target=start_game, args=(camera_mode, ))
                 t_connect3.start()
                 time.sleep(1)
 
-                if turn == 0:
-                    tel_send_message('It\'s your turn, use your fingers to choose the column 🖐🏻')
-                elif turn == 1:
-                    tel_send_message('It\'s ConnectAI turn ⚙️')
+                tel_send_message('Drawing lots... 🎲')
+                time.sleep(1)
 
-                state = 4
+                if not camera_mode:
+                    state = 4
 
-            if confirm == "no":
+            elif confirm == "no":
                 tel_send_message("Insert your username again:")
                 state = 2
+
+        elif state == 4:
+            chat_id, txt = tel_parse_message(msg)
+            check = is_number(txt)
+
+            if not check:
+                tel_send_message('Input value is not valid, please send a number between 1 and 7.')
+                ERROR = True
+            else:
+                mqtt_client.publish(topic_user, txt)
 
         return Response('ok', status=200)
     else:

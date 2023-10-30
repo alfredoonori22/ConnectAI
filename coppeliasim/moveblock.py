@@ -3,6 +3,13 @@ import coppeliasim.api.sim as sim
 import coppeliasim.globalvariables as g
 import numpy as np
 from coppeliasim.gripper import Gripper
+import paho.mqtt.client as mqtt
+
+topic_end = 'connect4/end'
+
+# MQTT
+broker = 'broker.emqx.io'
+broker_port = 1883
 
 
 def move_L(clientid, target, target_pos, speed):
@@ -63,69 +70,80 @@ def move_L(clientid, target, target_pos, speed):
 
 
 def BlueMove(clientid, cuboidH):
-    move_L(clientid, g.target, [0.6, -0.7, 1.0, -g.PI, 0, 0], 0.4)
-    time.sleep(0.5)
-    move_L(clientid, g.target, [0.6, -0.7, 0.547, g.PI, 0, 0], 0.5)
+    move_L(clientid, g.target, [0.88, -0.675, 1.0, -g.PI, 0, 0], g.velocity)
+    time.sleep(0.1)
+    move_L(clientid, g.target, [0.88, -0.675, 0.547, g.PI, 0, 0], g.velocity)
     time.sleep(0.5)
     Gripper(clientid, 0)
     sim.simxSetObjectParent(clientid, cuboidH, -1, True, sim.simx_opmode_blocking)
-    time.sleep(0.5)
-    move_L(clientid, g.target, [0.6, -0.7, 0.7, g.PI, 0, 0], 0.4)
-    time.sleep(0.5)
-    move_L(clientid, g.target, [0.428, -0.7, 1.0, 0, -g.PI / 2, 0], 0.4)
-    time.sleep(0.5)
-    move_L(clientid, g.target, [0.428, -0.7, 0.72, 0, -g.PI / 2, 0], 0.5)
-    time.sleep(0.5)
+    time.sleep(0.1)
+    move_L(clientid, g.target, [0.88, -0.675, 0.7, g.PI, 0, 0], g.velocity)
+    time.sleep(0.1)
+    move_L(clientid, g.target, [0.705, -0.675, 1.0, 0, -g.PI / 2, 0], g.velocity)
+    time.sleep(0.1)
+    move_L(clientid, g.target, [0.705, -0.675, 0.72, 0, -g.PI / 2, 0], g.velocity)
+    time.sleep(0.1)
 
 
 def OrangeMove(clientid, cuboidH):
-    move_L(clientid, g.target, [-0.5, -0.5, 1.0, 0, 0, g.PI / 2], 0.4)
-    time.sleep(0.5)
-    move_L(clientid, g.target, [-0.5, -0.5, 0.547, 0, 0, g.PI / 2], 0.5)
+    move_L(clientid, g.target, [-0.7, -0.5, 1.0, 0, 0, g.PI / 2], g.velocity)
+    time.sleep(0.1)
+    move_L(clientid, g.target, [-0.7, -0.5, 0.563, 0, 0, g.PI / 2], g.velocity)
     time.sleep(0.5)
     Gripper(clientid, 0)
     sim.simxSetObjectParent(clientid, cuboidH, -1, True, sim.simx_opmode_blocking)
-    time.sleep(0.5)
-    move_L(clientid, g.target, [-0.5, -0.5, 0.7, 0, 0, g.PI / 2], 0.5)
-    time.sleep(0.5)
-    move_L(clientid, g.target, [-0.49963, -0.675, 1.0, 0, -g.PI / 2, 0], 0.4)
-    time.sleep(0.5)
-    move_L(clientid, g.target, [-0.49963, -0.675, 0.72, 0, -g.PI / 2, 0], 0.5)
-    time.sleep(0.5)
+    time.sleep(0.1)
+    move_L(clientid, g.target, [-0.7, -0.5, 0.7, 0, 0, g.PI / 2], g.velocity)
+    time.sleep(0.1)
+    move_L(clientid, g.target, [-0.7, -0.675, 1.0, 0, -g.PI / 2, 0], g.velocity)
+    time.sleep(0.1)
+    move_L(clientid, g.target, [-0.7, -0.675, 0.72, 0, -g.PI / 2, 0], g.velocity)
+    time.sleep(0.1)
 
 
 # Moves the block
 def moveBlockFunc(clientid, cuboid, position, color):
     errorCode, cuboidH = sim.simxGetObjectHandle(g.clientID, f'/Cuboid_{cuboid}', sim.simx_opmode_blocking)
 
-    move_L(clientid, g.target, position, 0.5)
-    time.sleep(0.5)
-    move_L(clientid, g.target, [position[0], position[1], 0.72, 0, -g.PI/2, 0], 0.5)
+    move_L(clientid, g.target, position, g.velocity)
+    time.sleep(0.1)
+    move_L(clientid, g.target, [position[0], position[1], 0.72, 0, -g.PI/2, 0], g.velocity)
     time.sleep(0.5)
     Gripper(clientid, 1)
     sim.simxSetObjectParent(clientid, cuboidH, g.connector, True, sim.simx_opmode_blocking)
-    time.sleep(0.5)
-    move_L(clientid, g.target, position, 0.5)
+    time.sleep(0.1)
+    move_L(clientid, g.target, position, g.velocity)
     time.sleep(0.5)
 
     if color == 'orange':
         OrangeMove(clientid, cuboidH)
-    else:
+    elif color == 'blue':
         BlueMove(clientid, cuboidH)
+    else:
+        print('Invalid Color!')
 
     Gripper(clientid, 1)
     sim.simxSetObjectParent(clientid, cuboidH, g.connector, True, sim.simx_opmode_blocking)
-    time.sleep(0.5)
-    move_L(clientid, g.target, g.initial_pos, 0.5)
-    time.sleep(0.5)
-    move_L(clientid, g.target, position, 0.5)
-    time.sleep(0.5)
-    move_L(clientid, g.target, [position[0], position[1], 0.72, 0, -g.PI / 2, 0], 0.5)
+    time.sleep(0.1)
+    move_L(clientid, g.target, g.initial_pos, g.velocity)
+    time.sleep(0.1)
+    move_L(clientid, g.target, position, g.velocity)
+    time.sleep(0.1)
+    move_L(clientid, g.target, [position[0], position[1], 0.72, 0, -g.PI / 2, 0], g.velocity)
     time.sleep(0.5)
     Gripper(clientid, 0)
     sim.simxSetObjectParent(clientid, cuboidH, -1, True, sim.simx_opmode_blocking)
+    time.sleep(0.1)
+    move_L(clientid, g.target, position, g.velocity)
+    time.sleep(0.1)
+    move_L(clientid, g.target, g.initial_pos, g.velocity)
     time.sleep(0.5)
-    move_L(clientid, g.target, position, 0.5)
+    mqtt_client.publish(topic_end, '1')
     time.sleep(0.5)
-    move_L(clientid, g.target, g.initial_pos, 0.5)
-    time.sleep(0.5)
+
+
+mqtt_client = mqtt.Client('Robot')
+mqtt_client.connect(broker, broker_port)
+move_L(g.clientID, g.target, [-0.6, -0.1, 1.3, 0, -g.PI/2, 0], g.velocity)
+time.sleep(0.1)
+move_L(g.clientID, g.target, g.initial_pos, g.velocity)

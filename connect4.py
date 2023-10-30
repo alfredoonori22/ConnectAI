@@ -1,14 +1,12 @@
 import time
-
 import numpy as np
 import random
-import sys
 import math
 import paho.mqtt.client as mqtt
 import threading
 
-ROW_COUNT = 4
-COLUMN_COUNT = 5
+ROWS = 6
+COLS = 7
 
 PLAYER = 0
 AI = 1
@@ -17,8 +15,8 @@ EMPTY = 0
 PLAYER_PIECE = 1
 AI_PIECE = -1
 
-WINDOW_LENGTH = 3
 NUMBER = -1
+END = 1
 
 # MQTT
 broker = 'broker.emqx.io'
@@ -29,27 +27,32 @@ topic_robot = 'connect4/robot'
 topic_username = 'connect4/username'
 topic_outcome = 'connect4/outcome'
 topic_turn = 'connect4/turn'
+topic_end = 'connect4/end'
 
 
 def on_connect(client, userdata, flags, rc):
     # print("Connected with result code " + str(rc))
     mqtt_client.subscribe(topic_user)
     mqtt_client.subscribe(topic_robot)
+    mqtt_client.subscribe(topic_end)
 
 
 def on_message(client, userdata, message):
-    global NUMBER
+    global NUMBER, END
 
     msg = message.payload.decode()
-    print('Ho ricevuto il messaggio: ' + msg + ' dal topic ' + message.topic)
+    print('Connect3 ha ricevuto il messaggio: ' + msg + ' dal topic ' + message.topic)
 
     if mqtt.topic_matches_sub(topic_user, message.topic):
         if msg != '-1':
             NUMBER = int(msg) - 1
 
+    if mqtt.topic_matches_sub(topic_end, message.topic):
+        END = 1
+
 
 def create_board():
-    board = np.zeros((ROW_COUNT, COLUMN_COUNT))
+    board = np.zeros((ROWS, COLS))
     return board
 
 
@@ -58,57 +61,52 @@ def drop_piece(board, row, col, piece):
 
 
 def is_valid_location(board, col):
-    return board[ROW_COUNT - 1][col] == 0
+    return board[0][col] == 0
 
 
 def get_next_open_row(board, col):
-    for r in range(ROW_COUNT):
+    for r in range(ROWS-1, -1, -1):
         if board[r][col] == 0:
             return r
 
 
-def print_board(board):
-    print(np.flip(board, 0))
-
-
 def winning_move(board, piece):
-    # Check horizontal locations for win
-    for c in range(COLUMN_COUNT - 2):
-        for r in range(ROW_COUNT):
-            if board[r][c] == piece and board[r][c + 1] == piece and board[r][c + 2] == piece:
+    for c in range(COLS-3):
+        for r in range(ROWS):
+            if board[r][c] == piece and board[r][c+1] == piece and board[r][c+2] == piece and board[r][c+3] == piece:
                 return True
 
-    # Check vertical locations for win
-    for c in range(COLUMN_COUNT):
-        for r in range(ROW_COUNT - 2):
-            if board[r][c] == piece and board[r + 1][c] == piece and board[r + 2][c] == piece:
+    for c in range(COLS):
+        for r in range(ROWS-3):
+            if board[r][c] == piece and board[r+1][c] == piece and board[r+2][c] == piece and board[r+3][c] == piece:
                 return True
 
-    # Check positively sloped diaganols
-    for c in range(COLUMN_COUNT - 2):
-        for r in range(ROW_COUNT - 2):
-            if board[r][c] == piece and board[r + 1][c + 1] == piece and board[r + 2][c + 2] == piece:
+    for c in range(COLS-3):
+        for r in range(3, ROWS):
+            if board[r][c] == piece and board[r-1][c+1] == piece and board[r-2][c+2] == piece and board[r-3][c+3] == piece:
                 return True
 
-    # Check negatively sloped diaganols
-    for c in range(COLUMN_COUNT - 2):
-        for r in range(2, ROW_COUNT):
-            if board[r][c] == piece and board[r - 1][c + 1] == piece and board[r - 2][c + 2] == piece:
+    for c in range(3,COLS):
+        for r in range(3, ROWS):
+            if board[r][c] == piece and board[r-1][c-1] == piece and board[r-2][c-2] == piece and board[r-3][c-3] == piece:
                 return True
 
 
 def evaluate_window(window, piece):
     score = 0
     opp_piece = PLAYER_PIECE
+
     if piece == PLAYER_PIECE:
         opp_piece = AI_PIECE
 
-    if window.count(piece) == 3:
-        score += 100
-    elif window.count(piece) == 2 and window.count(EMPTY) == 1:
-        score += 5
+    if window.count(piece) == 4:
+        score += 1000
+    elif window.count(piece) == 3 and window.count(0) == 1:
+        score += 10
+    elif window.count(piece) == 2 and window.count(0) == 2:
+        score += 2
 
-    if window.count(opp_piece) == 2 and window.count(EMPTY) == 1:
+    if window.count(opp_piece) == 3 and window.count(0) == 1:
         score -= 4
 
     return score
@@ -118,33 +116,33 @@ def score_position(board, piece):
     score = 0
 
     # Score center column
-    center_array = [int(i) for i in list(board[:, COLUMN_COUNT // 2])]
+    center_array = [int(i) for i in list(board[:, COLS // 2])]
     center_count = center_array.count(piece)
-    score += center_count * 3
+    score += center_count * 6
 
     # Score Horizontal
-    for r in range(ROW_COUNT):
+    for r in range(ROWS):
         row_array = [int(i) for i in list(board[r, :])]
-        for c in range(COLUMN_COUNT - 2):
-            window = row_array[c:c + WINDOW_LENGTH]
+        for c in range(COLS - 3):
+            window = row_array[c:c + 4]
             score += evaluate_window(window, piece)
 
     # Score Vertical
-    for c in range(COLUMN_COUNT):
+    for c in range(COLS):
         col_array = [int(i) for i in list(board[:, c])]
-        for r in range(ROW_COUNT - 2):
-            window = col_array[r:r + WINDOW_LENGTH]
+        for r in range(ROWS - 3):
+            window = col_array[r:r + 4]
             score += evaluate_window(window, piece)
 
     # Score positive sloped diagonal
-    for r in range(ROW_COUNT - 2):
-        for c in range(COLUMN_COUNT - 2):
-            window = [board[r + i][c + i] for i in range(WINDOW_LENGTH)]
+    for r in range(3, ROWS):
+        for c in range(COLS - 3):
+            window = [board[r - i][c + i] for i in range(4)]
             score += evaluate_window(window, piece)
 
-    for r in range(ROW_COUNT - 2):
-        for c in range(COLUMN_COUNT - 2):
-            window = [board[r + 2 - i][c + i] for i in range(WINDOW_LENGTH)]
+    for r in range(3, ROWS):
+        for c in range(3, COLS):
+            window = [board[r - i][c - i] for i in range(4)]
             score += evaluate_window(window, piece)
 
     return score
@@ -176,7 +174,7 @@ def minimax(board, depth, alpha, beta, maximizingPlayer):
             row = get_next_open_row(board, col)
             b_copy = board.copy()
             drop_piece(b_copy, row, col, AI_PIECE)
-            new_score = minimax(b_copy, depth - 1, alpha, beta, False)[1]
+            _, new_score = minimax(b_copy, depth - 1, alpha, beta, False)
 
             if new_score > value:
                 value = new_score
@@ -206,44 +204,36 @@ def minimax(board, depth, alpha, beta, maximizingPlayer):
 
 def get_valid_locations(board):
     valid_locations = []
-    for col in range(COLUMN_COUNT):
+    for col in range(COLS):
         if is_valid_location(board, col):
             valid_locations.append(col)
     return valid_locations
 
 
-def pick_best_move(board, piece):
-    valid_locations = get_valid_locations(board)
-    best_score = -10000
-    best_col = random.choice(valid_locations)
-    for col in valid_locations:
-        row = get_next_open_row(board, col)
-        temp_board = board.copy()
-        drop_piece(temp_board, row, col, piece)
-        score = score_position(temp_board, piece)
-        if score > best_score:
-            best_score = score
-            best_col = col
-
-    return best_col
-
-
-def start_game():
-    global NUMBER
+def start_game(camera_mode):
+    global NUMBER, END
 
     board = create_board()
-    game_over = False
-    turn = random.randint(PLAYER, AI)
 
-    mqtt_client.publish(topic_turn, turn)
+    game_over = False
+
+    turn = random.randint(PLAYER, AI)
 
     while not game_over:
         # Ask for Person Player Input
-        time.sleep(2)
+        time.sleep(1)
+        while not END:
+            continue
+        END = 0
+
+        mqtt_client.publish(topic_turn, turn)
 
         if turn == PLAYER:
             print('Tuo turno')
-            mqtt_client.publish(f'connect4/user', -1)
+            if camera_mode:
+                mqtt_client.publish(topic_user, -1)
+
+            time.sleep(1)
             while NUMBER == -1:
                 continue
 
@@ -262,24 +252,24 @@ def start_game():
                 turn += 1
                 turn = turn % 2
 
-                print_board(board)
+                print(board)
 
         # Ask for Player AI Input
-        if turn == AI and not game_over:
-            time.sleep(5)
+        elif turn == AI and not game_over:
             col, minimax_score = minimax(board, 5, -math.inf, math.inf, True)
 
             if is_valid_location(board, col):
                 row = get_next_open_row(board, col)
                 drop_piece(board, row, col, AI_PIECE)
 
+                time.sleep(1)
                 mqtt_client.publish('connect4/robot', col+1)
                 if winning_move(board, AI_PIECE):
                     print("Player AI wins!")
                     mqtt_client.publish(topic_outcome, 1)
                     game_over = True
 
-                print_board(board)
+                print(board)
 
                 turn += 1
                 turn = turn % 2
