@@ -15,13 +15,13 @@ def connectionMessage(clientID):
 
 
 PI = np.pi
-velocity = 1.3
+velocity = 1.0
 
 # Obtaining appropriate handles
-_, target = sim.simxGetObjectHandle(clientID, '/target', sim.simx_opmode_blocking)   # target dummy
-_, j1 = sim.simxGetObjectHandle(clientID, '/UR10/ROBOTIQ85/active1', sim.simx_opmode_blocking)  # gripper joint 1
-_, j2 = sim.simxGetObjectHandle(clientID, '/UR10/ROBOTIQ85/active2', sim.simx_opmode_blocking)  # gripper joint 2
-_, connector = sim.simxGetObjectHandle(clientID, '/UR10/ROBOTIQ85/attachPoint', sim.simx_opmode_blocking)    # gripper connect point
+_, target = sim.simxGetObjectHandle(clientID, 'target', sim.simx_opmode_blocking)   # target dummy
+_, j1 = sim.simxGetObjectHandle(clientID, 'ROBOTIQ_85_active1', sim.simx_opmode_blocking)  # gripper joint 1
+_, j2 = sim.simxGetObjectHandle(clientID, 'ROBOTIQ_85_active2', sim.simx_opmode_blocking)  # gripper joint 2
+_, connector = sim.simxGetObjectHandle(clientID, 'ROBOTIQ_85_attachPoint', sim.simx_opmode_blocking)    # gripper connect point
 
 # Obtaining joint positions for the gripper to close & open
 _, p1 = sim.simxGetJointPosition(clientID, j1, sim.simx_opmode_streaming)
@@ -35,9 +35,9 @@ initial_pos = [0, 0.1, 1.1, 0, -PI / 2, 0]
 
 # Cuboid initial position ([A0, A1...], [B0, B1...], ...)
 position = [
-        [[-0.6, -0.1, 1.0, 0, -PI/2, 0], [-0.4, -0.1, 1.0, 0, -PI/2, 0], [-0.2, -0.1, 1.0, 0, -PI/2, 0], [0, -0.1, 1.0, 0, -PI/2, 0], [0.2, -0.1, 1.0, 0, -PI/2, 0], [0.4, -0.1, 1.0, 0, -PI/2, 0], [0.6, -0.1, 1.0, 0, -PI/2, 0]],
-        [[-0.6, 0.1, 1.0, 0, -PI/2, 0], [-0.4, 0.1, 1.0, 0, -PI/2, 0], [-0.2, 0.1, 1.0, 0, -PI/2, 0], [0, 0.1, 1.0, 0, -PI/2, 0], [0.2, 0.1, 1.0, 0, -PI/2, 0], [0.4, 0.1, 1.0, 0, -PI/2, 0], [0.6, 0.1, 1.0, 0, -PI/2, 0]],
-        [[-0.6, 0.3, 1.0, 0, -PI/2, 0], [-0.4, 0.3, 1.0, 0, -PI/2, 0], [-0.2, 0.3, 1.0, 0, -PI/2, 0], [0, 0.3, 1.0, 0, -PI/2, 0], [0.2, 0.3, 1.0, 0, -PI/2, 0], [0.4, 0.3, 1.0, 0, -PI/2, 0], [0.6, 0.3, 1.0, 0, -PI/2, 0]],
-        [[-0.6, 0.5, 1.0, 0, -PI/2, 0], [-0.4, 0.5, 1.0, 0, -PI/2, 0], [-0.2, 0.5, 1.0, 0, -PI/2, 0], [0, 0.5, 1.0, 0, -PI/2, 0], [0.2, 0.5, 1.0, 0, -PI/2, 0], [0.4, 0.5, 1.0, 0, -PI/2, 0], [0.6, 0.5, 1.0, 0, -PI/2, 0]],
-        [[-0.6, 0.7, 1.0, 0, -PI/2, 0], [-0.4, 0.7, 1.0, 0, -PI/2, 0], [-0.2, 0.7, 1.0, 0, -PI/2, 0], [0, 0.7, 1.0, 0, -PI/2, 0], [0.2, 0.7, 1.0, 0, -PI/2, 0], [0.4, 0.7, 1.0, 0, -PI/2, 0], [0.6, 0.7, 1.0, 0, -PI/2, 0]],
-        [[-0.6, 0.9, 1.0, 0, -PI/2, 0], [-0.4, 0.9, 1.0, 0, -PI/2, 0], [-0.2, 0.9, 1.0, 0, -PI/2, 0], [0, 0.9, 1.0, 0, -PI/2, 0], [0.2, 0.9, 1.0, 0, -PI/2, 0], [0.4, 0.9, 1.0, 0, -PI/2, 0], [0.6, 0.9, 1.0, 0, -PI/2, 0]]]
+        [[-0.583, -0.1, 1.0, 0, -PI/2, 0], [-0.4, -0.1, 1.0, 0, -PI/2, 0], [-0.2, -0.1, 1.0, 0, -PI/2, 0], [0, -0.1, 1.0, 0, -PI/2, 0], [0.2, -0.1, 1.0, 0, -PI/2, 0], [0.4, -0.1, 1.0, 0, -PI/2, 0], [0.6, -0.1, 1.0, 0, -PI/2, 0]],
+        [[-0.583, 0.1, 1.0, 0, -PI/2, 0], [-0.4, 0.1, 1.0, 0, -PI/2, 0], [-0.2, 0.1, 1.0, 0, -PI/2, 0], [0, 0.1, 1.0, 0, -PI/2, 0], [0.2, 0.1, 1.0, 0, -PI/2, 0], [0.4, 0.1, 1.0, 0, -PI/2, 0], [0.6, 0.1, 1.0, 0, -PI/2, 0]],
+        [[-0.583, 0.3, 1.0, 0, -PI/2, 0], [-0.4, 0.3, 1.0, 0, -PI/2, 0], [-0.2, 0.3, 1.0, 0, -PI/2, 0], [0, 0.3, 1.0, 0, -PI/2, 0], [0.2, 0.3, 1.0, 0, -PI/2, 0], [0.4, 0.3, 1.0, 0, -PI/2, 0], [0.6, 0.3, 1.0, 0, -PI/2, 0]],
+        [[-0.583, 0.5, 1.0, 0, -PI/2, 0], [-0.4, 0.5, 1.0, 0, -PI/2, 0], [-0.2, 0.5, 1.0, 0, -PI/2, 0], [0, 0.5, 1.0, 0, -PI/2, 0], [0.2, 0.5, 1.0, 0, -PI/2, 0], [0.4, 0.5, 1.0, 0, -PI/2, 0], [0.6, 0.5, 1.0, 0, -PI/2, 0]],
+        [[-0.583, 0.7, 1.0, 0, -PI/2, 0], [-0.4, 0.7, 1.0, 0, -PI/2, 0], [-0.2, 0.7, 1.0, 0, -PI/2, 0], [0, 0.7, 1.0, 0, -PI/2, 0], [0.2, 0.7, 1.0, 0, -PI/2, 0], [0.4, 0.7, 1.0, 0, -PI/2, 0], [0.6, 0.7, 1.0, 0, -PI/2, 0]],
+        [[-0.583, 0.9, 1.0, 0, -PI/2, 0], [-0.4, 0.9, 1.0, 0, -PI/2, 0], [-0.2, 0.9, 1.0, 0, -PI/2, 0], [0, 0.9, 1.0, 0, -PI/2, 0], [0.2, 0.9, 1.0, 0, -PI/2, 0], [0.4, 0.9, 1.0, 0, -PI/2, 0], [0.6, 0.9, 1.0, 0, -PI/2, 0]]]

@@ -27,13 +27,6 @@ def move_L(clientid, target, target_pos, speed):
     intermediate_pos = [0, 0, 0]
     intermediate_orient = [0, 0, 0]
 
-    # Accounting for orientation
-    for i in range(3):
-        if abs(target_pos[i + 3]) - orient[i] > g.PI and orient[i] < 0:
-            orient[i] = orient[i] + 2 * g.PI
-        elif abs(target_pos[i + 3]) - orient[i] > g.PI and orient[i] > 0:
-            orient[i] = orient[i] - 2 * g.PI
-
     for i in range(3):
         old_pos.append(pos[i])
         delta_pos.append(target_pos[i] - old_pos[i])
@@ -48,7 +41,7 @@ def move_L(clientid, target, target_pos, speed):
             intermediate_pos[j] = (old_pos[j] + (delta_pos[j] / samples_number))
             intermediate_orient[j] = (old_orient[j] + (delta_orient[j] / samples_number))
 
-        # Accounting for speed (?)
+        # Accounting for speed
         startTime = time.time()
         while (time.time() - startTime) < (distance / (speed * samples_number)):
             time.sleep(0.01)
@@ -70,48 +63,58 @@ def move_L(clientid, target, target_pos, speed):
 
 
 def BlueMove(clientid, cuboidH):
-    move_L(clientid, g.target, [0.88, -0.675, 1.0, -g.PI, 0, 0], g.velocity)
-    time.sleep(0.1)
-    move_L(clientid, g.target, [0.88, -0.675, 0.547, g.PI, 0, 0], g.velocity)
+    move_L(clientid, g.target, [0.89, -0.675, 1.0, -g.PI, 0, 0], g.velocity)
+    time.sleep(0.2)
+    move_L(clientid, g.target, [0.89, -0.675, 0.547, g.PI, 0, 0], g.velocity)
     time.sleep(0.5)
     Gripper(clientid, 0)
     sim.simxSetObjectParent(clientid, cuboidH, -1, True, sim.simx_opmode_blocking)
-    time.sleep(0.1)
-    move_L(clientid, g.target, [0.88, -0.675, 0.7, g.PI, 0, 0], g.velocity)
-    time.sleep(0.1)
-    move_L(clientid, g.target, [0.705, -0.675, 1.0, 0, -g.PI / 2, 0], g.velocity)
-    time.sleep(0.1)
-    move_L(clientid, g.target, [0.705, -0.675, 0.72, 0, -g.PI / 2, 0], g.velocity)
-    time.sleep(0.1)
+    time.sleep(0.2)
+    move_L(clientid, g.target, [0.89, -0.675, 0.75, -g.PI, 0, 0], g.velocity)
+    time.sleep(0.2)
+    move_L(clientid, g.target, [0.71, -0.675, 1.0, 0, -g.PI / 2, 0], g.velocity)
+    time.sleep(0.2)
+    move_L(clientid, g.target, [0.71, -0.675, 0.72, 0, -g.PI / 2, 0], g.velocity)
+    time.sleep(0.2)
+    Gripper(clientid, 1)
+    sim.simxSetObjectParent(clientid, cuboidH, g.connector, True, sim.simx_opmode_blocking)
+    time.sleep(0.2)
+    move_L(clientid, g.target, [0.71, -0.675, 1.1, 0, -g.PI / 2, 0], g.velocity)
 
 
 def OrangeMove(clientid, cuboidH):
-    move_L(clientid, g.target, [-0.7, -0.5, 1.0, 0, 0, g.PI / 2], g.velocity)
-    time.sleep(0.1)
-    move_L(clientid, g.target, [-0.7, -0.5, 0.563, 0, 0, g.PI / 2], g.velocity)
-    time.sleep(0.5)
+    move_L(clientid, g.target, [-0.7, -0.48, 1.0, 0, 0, g.PI / 2], g.velocity)
+    time.sleep(0.2)
+    move_L(clientid, g.target, [-0.7, -0.48, 0.563, 0, 0, g.PI / 2], g.velocity)
+    time.sleep(0.2)
     Gripper(clientid, 0)
+    time.sleep(1)
     sim.simxSetObjectParent(clientid, cuboidH, -1, True, sim.simx_opmode_blocking)
-    time.sleep(0.1)
-    move_L(clientid, g.target, [-0.7, -0.5, 0.7, 0, 0, g.PI / 2], g.velocity)
-    time.sleep(0.1)
-    move_L(clientid, g.target, [-0.7, -0.675, 1.0, 0, -g.PI / 2, 0], g.velocity)
-    time.sleep(0.1)
-    move_L(clientid, g.target, [-0.7, -0.675, 0.72, 0, -g.PI / 2, 0], g.velocity)
-    time.sleep(0.1)
+    time.sleep(0.5)
+    move_L(clientid, g.target, [-0.7, -0.48, 0.7, 0, 0, g.PI / 2], g.velocity)
+    time.sleep(0.2)
+    move_L(clientid, g.target, [-0.685, -0.67, 1.0, 0, -g.PI / 2, 0], g.velocity)
+    Gripper(clientid, 0)
+    time.sleep(0.2)
+    move_L(clientid, g.target, [-0.685, -0.675, 0.72, 0, -g.PI / 2, 0], g.velocity)
+    time.sleep(0.2)
+    Gripper(clientid, 1)
+    sim.simxSetObjectParent(clientid, cuboidH, g.connector, True, sim.simx_opmode_blocking)
+    time.sleep(0.2)
+    move_L(clientid, g.target, [-0.685, -0.675, 1.1, 0, -g.PI / 2, 0], g.velocity)
 
 
 # Moves the block
 def moveBlockFunc(clientid, cuboid, position, color):
     errorCode, cuboidH = sim.simxGetObjectHandle(g.clientID, f'Cuboid_{cuboid}', sim.simx_opmode_blocking)
-
+    Gripper(clientid, 0)
     move_L(clientid, g.target, position, g.velocity)
-    time.sleep(0.1)
-    move_L(clientid, g.target, [position[0], position[1], 0.72, 0, -g.PI/2, 0], g.velocity)
+    time.sleep(0.2)
+    move_L(clientid, g.target, [position[0], position[1], 0.74, 0, -g.PI/2, 0], g.velocity)
     time.sleep(0.5)
     Gripper(clientid, 1)
     sim.simxSetObjectParent(clientid, cuboidH, g.connector, True, sim.simx_opmode_blocking)
-    time.sleep(0.1)
+    time.sleep(0.2)
     move_L(clientid, g.target, position, g.velocity)
     time.sleep(0.5)
 
@@ -122,20 +125,17 @@ def moveBlockFunc(clientid, cuboid, position, color):
     else:
         print('Invalid Color!')
 
-    Gripper(clientid, 1)
-    sim.simxSetObjectParent(clientid, cuboidH, g.connector, True, sim.simx_opmode_blocking)
-    time.sleep(0.1)
     move_L(clientid, g.target, g.initial_pos, g.velocity)
-    time.sleep(0.1)
+    time.sleep(0.2)
     move_L(clientid, g.target, position, g.velocity)
-    time.sleep(0.1)
-    move_L(clientid, g.target, [position[0], position[1], 0.72, 0, -g.PI / 2, 0], g.velocity)
+    time.sleep(0.2)
+    move_L(clientid, g.target, [position[0], position[1], 0.74, 0, -g.PI / 2, 0], g.velocity)
     time.sleep(0.5)
     Gripper(clientid, 0)
     sim.simxSetObjectParent(clientid, cuboidH, -1, True, sim.simx_opmode_blocking)
-    time.sleep(0.1)
+    time.sleep(0.2)
     move_L(clientid, g.target, position, g.velocity)
-    time.sleep(0.1)
+    time.sleep(0.2)
     move_L(clientid, g.target, g.initial_pos, g.velocity)
     time.sleep(0.5)
     mqtt_client.publish(topic_end, '1')
@@ -144,6 +144,7 @@ def moveBlockFunc(clientid, cuboid, position, color):
 
 mqtt_client = mqtt.Client('Robot')
 mqtt_client.connect(broker, broker_port)
-move_L(g.clientID, g.target, [-0.6, -0.1, 1.3, 0, -g.PI/2, 0], g.velocity)
-time.sleep(0.1)
+g.connectionMessage(g.clientID)
+move_L(g.clientID, g.target, [-0.6, 0.1, 1.3, 0, -g.PI/2, 0], g.velocity)
+time.sleep(0.2)
 move_L(g.clientID, g.target, g.initial_pos, g.velocity)

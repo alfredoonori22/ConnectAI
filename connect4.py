@@ -30,14 +30,14 @@ topic_turn = 'connect4/turn'
 topic_end = 'connect4/end'
 
 
-def on_connect():
+def on_connect(client, userdata, flags, rc):
     # print("Connected with result code " + str(rc))
     mqtt_client.subscribe(topic_user)
     mqtt_client.subscribe(topic_robot)
     mqtt_client.subscribe(topic_end)
 
 
-def on_message(message):
+def on_message(client, userdata, message):
     global NUMBER, END
 
     msg = message.payload.decode()

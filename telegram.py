@@ -11,7 +11,7 @@ from connect4 import start_game
 from vision import VisionTask
 
 TOKEN = "6463703134:AAFYpcd2gbD1WArMCmy7x7kuM2adL9QZDFA"
-# https://api.telegram.org/bot6463703134:AAFYpcd2gbD1WArMCmy7x7kuM2adL9QZDFA/setWebhook?url=https://c785-2001-b07-6442-aa2f-cf2-4e4a-6321-c9c3.ngrok.io
+# https://api.telegram.org/bot6463703134:AAFYpcd2gbD1WArMCmy7x7kuM2adL9QZDFA/setWebhook?url=https://c529-151-44-7-67.ngrok-free.app
 # ngrok http 5000
 
 # MQTT
@@ -104,14 +104,14 @@ def sendGrid(turn):
     tel_send_message(grid_mes)
 
 
-def on_connect():
+def on_connect(client, userdata, flags, rc):
     mqtt_client.subscribe(topic_user)
     mqtt_client.subscribe(topic_robot)
     mqtt_client.subscribe(topic_outcome)
     mqtt_client.subscribe(topic_turn)
 
 
-def on_message(message):
+def on_message(client, userdata, message):
     global grid, counter, username, turn, state
 
     msg = message.payload.decode()
@@ -354,12 +354,11 @@ def index():
                                  "⚪\t ⚪\t ⚪\t ⚪\t ⚪\t ⚪\t ⚪\t\n\n"
                                  "1️⃣\t 2️⃣\t 3️⃣\t 4️⃣\t 5️⃣\t 6️⃣\t 7️⃣\t\n\n")
 
-                t_connect3 = threading.Thread(target=start_game, args=(camera_mode, ))
-                t_connect3.start()
-                time.sleep(1)
-
                 tel_send_message('Drawing lots... 🎲')
                 time.sleep(1)
+
+                t_connect3 = threading.Thread(target=start_game, args=(camera_mode, ))
+                t_connect3.start()
 
                 if not camera_mode:
                     state = 4
@@ -396,5 +395,4 @@ if __name__ == '__main__':
     t2 = threading.Thread(target=mqtt_client.loop_forever)
     t2.start()
 
-    g.connectionMessage(g.clientID)
     startTelegram()
