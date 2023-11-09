@@ -7,7 +7,7 @@ import coppeliasim.globalvariables as g
 def gripperFunction(clientid, closing, j1, j2, p1, p2):
     if closing == 1:
         if p1 < (p2 - 0.008):
-            sim.simxSetJointTargetVelocity(clientid, j1, -0.05, sim.simx_opmode_oneshot) #Try sim.simx_opmode_streaming if it doesn't work
+            sim.simxSetJointTargetVelocity(clientid, j1, -0.05, sim.simx_opmode_oneshot)     # Try sim.simx_opmode_streaming if it doesn't work
             sim.simxSetJointTargetVelocity(clientid, j2, -0.2, sim.simx_opmode_oneshot)
         else:
             sim.simxSetJointTargetVelocity(clientid, j1, -0.2, sim.simx_opmode_oneshot)
@@ -36,4 +36,3 @@ def Gripper(clientid, closing):
         gripperFunction(clientid, 0, g.j1, g.j2, g.p1, g.p2)
     time.sleep(0.15)    # Alter the time value to account for differently sized objects to grip
     pauseGripper(clientid, g.j1, g.j2)
-
