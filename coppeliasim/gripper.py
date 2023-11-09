@@ -1,5 +1,4 @@
 import coppeliasim.api.sim as sim
-import time
 import coppeliasim.globalvariables as g
 
 

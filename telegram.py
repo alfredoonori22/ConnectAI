@@ -8,10 +8,10 @@ import threading
 from coppeliasim.moveblock import moveBlockFunc
 import coppeliasim.globalvariables as g
 from connect4 import start_game
-from vision import VisionTask
+# from vision import VisionTask
 
 TOKEN = "6463703134:AAFYpcd2gbD1WArMCmy7x7kuM2adL9QZDFA"
-# https://api.telegram.org/bot6463703134:AAFYpcd2gbD1WArMCmy7x7kuM2adL9QZDFA/setWebhook?url=https://c529-151-44-7-67.ngrok-free.app
+# https://api.telegram.org/bot6463703134:AAFYpcd2gbD1WArMCmy7x7kuM2adL9QZDFA/setWebhook?url=https://afb3-5-144-189-173.ngrok-free.app
 # ngrok http 5000
 
 # MQTT
@@ -24,7 +24,7 @@ topic_turn = 'connect4/turn'
 
 app = Flask(__name__)
 
-global chat_id
+chat_id = ''
 txt = ''
 username = ''
 
@@ -32,8 +32,9 @@ turn = -1
 state = 0
 message_id = 0
 counter = 0
-camera_mode = True   # True camera, False keyboard
 NUMBER = -1
+
+camera_mode = True   # True camera, False keyboard
 ERROR = False
 
 grid = [[0, 0, 0, 0, 0, 0, 0],
@@ -57,13 +58,11 @@ diz_numbers = {1: '1️⃣',
                7: '7️⃣'}
 
 '''
-stato 0 = Start del bot
-stato 1 = Start del match
-stato 2 = Inserimento username
-stato 3 = Conferma username
-stato 4 = Messaggio di inizio sfida e riproduzione del match
-stato 5 = Arriva il messaggio con il risultato -> Vittoria, pareggio, sconfitta
-stato 6 = Rivincita/Esci
+stato 0 = Start del bot e Selezione modalità di gioco
+stato 1 = Inserimento username
+stato 2 = Conferma username
+stato 3 = Messaggio di inizio sfida e riproduzione del match
+stato 4 = Controllo input tastiera
 '''
 
 
@@ -81,7 +80,7 @@ def sendGrid(turn):
                 grid_mes += "🟠\t "
         grid_mes += "\n\n"
 
-    grid_mes += "1️⃣\t 2️⃣\t 3️⃣\t 4️⃣\t 5️⃣\t 6️⃣\t 7️⃣\n\n"
+    grid_mes += "1️⃣\t 2️⃣\t 3️⃣\t 4️⃣\t 5️⃣\t 6️⃣\t 7️⃣"
 
     if ERROR:
         tel_del_message(message_id + counter + 5)
@@ -100,6 +99,7 @@ def sendGrid(turn):
 
     if not camera_mode and turn:
         counter += 1
+
     counter += 3
     tel_send_message(grid_mes)
 
@@ -171,7 +171,7 @@ def on_message(client, userdata, message):
         elif result == 0:
             tel_send_message("It's a draw! 🤝🫱🏻🫱🏻‍")
         tel_send_message("See you next time! 👋🏻")
-        state = 6
+        state = -1
 
 
 def tel_parse_message(message):
@@ -306,8 +306,8 @@ def index():
             tel_send_message("Align four of your pieces either horizontally, vertically, or diagonally."
                              "\nBe strategic and watch out for your opponent! 😉")
             tel_send_message("There are two different modes to make your move in this game:"
-                             "\n 📷 -> Show the column number by holding up your fingers in front of the webcam"
                              "\n ⌨️ -> Send a message with the column number"
+                             "\n 📷 -> Show the column number by holding up your fingers in front of the webcam"
                              "\nThe robot will move the piece for you! 🦾"
                              "\nGood luck! 🍀")
             tel_send_startbutton()
