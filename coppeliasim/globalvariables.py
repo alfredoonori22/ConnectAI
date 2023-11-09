@@ -15,13 +15,13 @@ def connectionMessage(clientID):
 
 
 PI = np.pi
-velocity = 1.3
+velocity = 0.5
 
 # Obtaining appropriate handles
-errorCode, target = sim.simxGetObjectHandle(clientID, '/target', sim.simx_opmode_blocking) # target dummy
-errorCode, j1 = sim.simxGetObjectHandle(clientID, '/UR10/ROBOTIQ85/active1', sim.simx_opmode_blocking) #gripper joint 1
-errorCode, j2 = sim.simxGetObjectHandle(clientID, '/UR10/ROBOTIQ85/active2', sim.simx_opmode_blocking) #gripper joint 2
-errorCode, connector = sim.simxGetObjectHandle(clientID, '/UR10/ROBOTIQ85/attachPoint', sim.simx_opmode_blocking) # gripper connect point
+errorCode, target = sim.simxGetObjectHandle(clientID, 'target', sim.simx_opmode_blocking) # target dummy
+errorCode, j1 = sim.simxGetObjectHandle(clientID, 'ROBOTIQ_85_active1', sim.simx_opmode_blocking) #gripper joint 1
+errorCode, j2 = sim.simxGetObjectHandle(clientID, 'ROBOTIQ_85_active2', sim.simx_opmode_blocking) #gripper joint 2
+errorCode, connector = sim.simxGetObjectHandle(clientID, 'ROBOTIQ_85_attachPoint', sim.simx_opmode_blocking) # gripper connect point
 
 # Obtaining joint positions for the gripper to close & open
 errorCode, p1 = sim.simxGetJointPosition(clientID, j1, sim.simx_opmode_streaming)

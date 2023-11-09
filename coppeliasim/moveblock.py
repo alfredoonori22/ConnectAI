@@ -103,7 +103,7 @@ def OrangeMove(clientid, cuboidH):
 
 # Moves the block
 def moveBlockFunc(clientid, cuboid, position, color):
-    errorCode, cuboidH = sim.simxGetObjectHandle(g.clientID, f'/Cuboid_{cuboid}', sim.simx_opmode_blocking)
+    errorCode, cuboidH = sim.simxGetObjectHandle(g.clientID, f'Cuboid_{cuboid}', sim.simx_opmode_blocking)
 
     move_L(clientid, g.target, position, g.velocity)
     time.sleep(0.1)

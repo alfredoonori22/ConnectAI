@@ -10,8 +10,8 @@ import coppeliasim.globalvariables as g
 from connect4 import start_game
 from vision import VisionTask
 
-TOKEN = "6463703134:AAFsoS-0TWPMOxq4ZEK8OG-p48D8cbaZa0w"
-# https://api.telegram.org/bot6463703134:AAFsoS-0TWPMOxq4ZEK8OG-p48D8cbaZa0w/setWebhook?url=https://21a6-2001-b07-6442-aa2f-1800-82e6-397c-61d6.ngrok.io
+TOKEN = "6463703134:AAFYpcd2gbD1WArMCmy7x7kuM2adL9QZDFA"
+# https://api.telegram.org/bot6463703134:AAFYpcd2gbD1WArMCmy7x7kuM2adL9QZDFA/setWebhook?url=https://c785-2001-b07-6442-aa2f-cf2-4e4a-6321-c9c3.ngrok.io
 # ngrok http 5000
 
 # MQTT
@@ -392,5 +392,9 @@ mqtt_client.on_connect = on_connect
 mqtt_client.on_message = on_message
 mqtt_client.connect(broker, broker_port)
 
-t2 = threading.Thread(target=mqtt_client.loop_forever)
-t2.start()
+if __name__ == '__main__':
+    t2 = threading.Thread(target=mqtt_client.loop_forever)
+    t2.start()
+
+    g.connectionMessage(g.clientID)
+    startTelegram()
